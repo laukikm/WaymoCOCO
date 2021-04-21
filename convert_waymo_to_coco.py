@@ -14,6 +14,7 @@ tf.compat.v1.enable_eager_execution()
 class WaymoCOCOConverter():
     def __init__(self,
                  image_dir,
+                 label_dir="/home/laukik/arl_project/WaymoCOCO/labels",
                  image_prefix=None,
                  write_image=True,
                  add_waymo_info=False,
@@ -33,6 +34,8 @@ class WaymoCOCOConverter():
         """
 
         self.image_dir = image_dir
+        self.label_dir=label_dir
+
         self.image_prefix = image_prefix
         self.write_image = write_image
         self.add_waymo_info = add_waymo_info
@@ -86,17 +89,17 @@ class WaymoCOCOConverter():
         # Note that ids are different from those of waymo_class_mapping
         self.target_categories = [
             {
-                "id": 1,
+                "id": 0,
                 "name": "TYPE_VEHICLE",
                 "supercategory": "vehicle",
             },
             {
-                "id": 2,
+                "id": 1,
                 "name": "TYPE_PEDESTRIAN",
                 "supercategory": "person",
             },
             {
-                "id": 3,
+                "id": 2,
                 "name": "TYPE_CYCLIST",
                 "supercategory": "bike_plus",
             },
@@ -144,11 +147,12 @@ class WaymoCOCOConverter():
             self.img_index += 1
 
     def process_img(self, camera_image, frame, frame_index, tfrecord_index):
-        img_filename = f'{tfrecord_index:05d}_{frame_index:05d}_camera{camera_image.name}.jpg'  # noqa
+        img_filename = f'{tfrecord_index:05d}_{frame_index:05d}_camera{camera_image.name}'  # noqa
         # img_filename = f'{frame.context.name}_{camera_image.name}_{frame.timestamp_micros}.jpg'  # noqa
         if self.image_prefix is not None:
             img_filename = self.image_prefix + '_' + img_filename
-        img_path = os.path.join(self.image_dir, img_filename)
+        img_path = os.path.join(self.image_dir, img_filename+".jpg")
+        label_path=os.path.join(self.label_dir,img_filename+".txt")
 
         img = tf.image.decode_jpeg(camera_image.image).numpy()[:, :, ::-1]
         img_height = img.shape[0]
@@ -156,6 +160,14 @@ class WaymoCOCOConverter():
         if self.write_image:
             with open(img_path, 'wb') as f:
                 f.write(bytearray(camera_image.image))
+
+        label_str=""
+        for camera_label in frame.camera_labels:
+            # Write labels only for the image corresponding to this camera
+            if camera_label.name == camera_image.name:
+                self.write_label(camera_label,label_path)
+                
+
 
         self.add_coco_img_dict(img_filename,
                                height=img_height,
@@ -165,6 +177,39 @@ class WaymoCOCOConverter():
                                camera_id=int(camera_image.name),
                                frame=frame)
 
+    def write_label(self,camera_label,label_path):
+        label_str=""        
+        for box_label in camera_label.labels:
+            category_name_to_id = {
+                category['name']: category['id']
+                for category in self.target_categories
+            }
+            category_name = self.waymo_class_mapping[box_label.type]
+            #print(box_label.type)
+            
+            #import ipdb
+            #ipdb.set_trace()
+
+            category_id = category_name_to_id[category_name]
+            width = box_label.box.length  # box.length: dim x
+            height = box_label.box.width  # box.width: dim y
+            x1 = box_label.box.center_x 
+            y1 = box_label.box.center_y
+
+            x_scaled=x1/1920
+            y_scaled=y1/1280
+            w_scaled=width/1920
+            h_scaled=height/1280
+
+            label_str+=("{} {} {} {} {}\n".format(category_id,x_scaled,y_scaled,w_scaled,h_scaled))
+
+        with open(label_path,'w') as f:
+            f.write(label_str)
+            #import ipdb
+            #ipdb.set_trace()
+
+
+    
     def add_coco_img_dict(self,
                           file_name,
                           height=None,

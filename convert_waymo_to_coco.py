@@ -338,7 +338,7 @@ def main():
         image_dir,
         text_label_dir,
         image_prefix=args.image_filename_prefix,
-        write_image=(not args.skip_write_image),
+        write_image=True,
         add_waymo_info=args.add_waymo_info,
         frame_index_ones_place=args.frame_index_ones_place)
     waymo_converter.process_sequences(tfrecord_list)

@@ -302,6 +302,8 @@ def main():
     parser.add_argument('--tfrecord_dir', required=True, type=str)
     parser.add_argument('--work_dir', default='.', type=str)
     parser.add_argument('--image_dirname', required=True, type=str)
+    parser.add_argument('--text_label_dirname', required=True, type=str)
+
     parser.add_argument('--image_filename_prefix', default=None, type=str)
     parser.add_argument('--skip_write_image', action='store_true')
     parser.add_argument('--label_dirname', default='annotations', type=str)
@@ -320,6 +322,8 @@ def main():
     args = parser.parse_args()
 
     image_dir = os.path.join(args.work_dir, args.image_dirname)
+    text_label_dir=os.path.join(args.work_dir, args.text_label_dirname)
+
     label_dir = os.path.join(args.work_dir, args.label_dirname)
     os.makedirs(image_dir, exist_ok=True)
     os.makedirs(label_dir, exist_ok=True)
